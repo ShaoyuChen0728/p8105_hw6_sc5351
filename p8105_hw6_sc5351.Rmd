@@ -138,7 +138,7 @@ boot_r_data =
   weather_df |> 
   modelr::bootstrap(n = 5000) |>
   mutate(
-    models = map(strap, \(df) lm(tmax ~ tmin + prcp, data = df)),
+    models = map(strap,  ~lm(tmax ~ tmin + prcp, data = .)),
     glance = map(models, broom::glance))|>
   select(-strap,-models)|>
   unnest(glance)
@@ -175,7 +175,7 @@ boot_log_data =
   weather_df |> 
   modelr::bootstrap(n = 5000) |>
   mutate(
-    models = map(strap, \(df) lm(tmax ~ tmin + prcp, data = df)),
+    models = map(strap, ~lm(tmax ~ tmin + prcp, data = .)),
     results = map(models, broom::tidy))|>
   select(-strap,-models)|>
   unnest(results) |>
