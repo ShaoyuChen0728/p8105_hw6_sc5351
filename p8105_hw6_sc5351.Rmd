@@ -7,7 +7,9 @@ output: github_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(viridis)
+library(dplyr)
 set.seed(1)
+
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -210,5 +212,47 @@ log_beta_ci =
 log_beta_ci
 ```
 A 95% confidence interval for the log(beta1 * beta2) is between -8.896 and -4.590.
+
+
+### Problem 3
+
+#data clean
+```{r}
+birthweight_data =
+  read_csv("./data/birthweight.csv")|>
+  janitor::clean_names()|>
+  mutate(babysex = factor(case_when(
+                           babysex == 1 ~ "male",
+                           babysex == 2 ~ "female")),
+         
+         frace = factor(case_when(
+                           frace == 1 ~ "White",
+                           frace == 2 ~ "Black",
+                           frace == 3 ~ "Asian",
+                           frace == 4 ~ "Puerto Rican",
+                           frace == 8 ~ "Other",
+                           frace == 9 ~ "Unknown")),
+         
+         malform = factor(case_when(
+                           malform == 0 ~ "absent",
+                           malform == 1 ~ "present")),
+         
+         mrace = factor(case_when(mrace == 1 ~ "White",
+                           mrace == 2 ~ "Black",
+                           mrace == 3 ~ "Asian",
+                           mrace == 4 ~ "Puerto Rican",
+                           mrace == 8 ~ "Other")))
+```
+#then, check the missing data.
+```{r}
+sum(is.na(birthweight_data))
+```
+There is no missing data in birthweight_data.
+
+#Regression Models for birthweight_data.
+```{r}
+bwt_model = lm(bwt ~ ., data = birthweight_data)
+summary(bwt_model)
+```
 
 
