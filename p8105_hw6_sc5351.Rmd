@@ -251,8 +251,56 @@ There is no missing data in birthweight_data.
 
 #Regression Models for birthweight_data.
 ```{r}
-bwt_model = lm(bwt ~ ., data = birthweight_data)
+bwt_model = lm(bwt ~ gaweeks + ppwt + momage + smoken + wtgain + ppbmi, data = birthweight_data)
 summary(bwt_model)
 ```
+Based on the results, I find that `gaweeks`,`ppwt`,`momage`,`wtgain`,and `ppbmi`are significant variables in baby’s birth weight.
 
+#Create a plot of model residuals against fitted values.
+```{r}
+birthweight_data |>
+  add_predictions(bwt_model)|>
+  add_residuals(bwt_model)|>
+  ggplot(aes(x = pred, y = resid))+
+  geom_point()+
+  labs(
+    title = "Residuals vs Fitted Values",
+    x = "Fitted Values",
+    y = "Residuals"
+  ) +
+  stat_smooth(method = "lm")
+```
+#Compare your model to two others
+```{r}
+cv_data =
+  crossv_mc(birthweight_data, 100) |> 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)) |> 
+  mutate(
+    my_mod = map(.x = train, ~lm(bwt ~ gaweeks + ppwt + momage + smoken + wtgain + ppbmi, data = birthweight_data)),
+    main_mod = map(.x = train, ~lm(bwt ~ blength + gaweeks, data = birthweight_data)),
+    interaction_mod = map(.x = train, ~lm(bwt ~ bhead + blength + babysex + babysex*bhead*blength, data = birthweight_data)))|> 
+  mutate(
+    rmse_my_mod = map2_dbl(my_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_main_mod = map2_dbl(main_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_interaction_mod = map2_dbl(interaction_mod, test, ~rmse(model = .x, data = .y)))
 
+    
+```
+
+#Create the plot
+```{r}
+cv_data |>
+  select(starts_with("rmse"))|>
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_")|>
+  mutate(model = fct_inorder(model))|>
+  ggplot(aes(x = model, y = rmse, fill = model)) + 
+  geom_violin()
+```
+
+By comparing the three models, the intersection model has the smallest RMSE distribution. Lower RMSE values represents better, so the intersection model performs best.
