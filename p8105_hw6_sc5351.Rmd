@@ -34,7 +34,7 @@ library(modelr)
 
 ### Problem 1
 
-# Create a city_state variable (e.g. "Baltimore, MD"), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO -- these don't report victim race. Also omit Tulsa, AL -- this is a data entry mistake. For this problem, limit your analysis those for whom victim_race is white or black. Be sure that victim_age is numeric.
+#Create a city_state variable (e.g. "Baltimore, MD"), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO -- these don't report victim race. Also omit Tulsa, AL -- this is a data entry mistake. For this problem, limit your analysis those for whom victim_race is white or black. Be sure that victim_age is numeric.
 
 ```{r q1_data_cleaning}
 homicide_df = 
@@ -52,7 +52,7 @@ homicide_df =
   select(city_state, resolution, victim_age, victim_sex, victim_race)
 ```
 
-# For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
+#For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
 
 ```{r q1_glm_baltimore}
 baltimore_glm = 
@@ -70,7 +70,7 @@ baltimore_glm |>
   knitr::kable(digits = 3)
 ```
 
-# Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing male victims to female victims. Do this within a "tidy" pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
+#Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing male victims to female victims. Do this within a "tidy" pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 
 ```{r q1_glm_all_cities}
 model_results = 
@@ -94,7 +94,7 @@ model_results |>
   knitr::kable(digits = 3)
 ```
 
-# Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
+#Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
 
 ```{r q1_plot}
 model_results |> 
@@ -134,33 +134,32 @@ boot_sample = function(df) {
 
 #Use 5000 bootstrap samples and, for each bootstrap sample, produce estimates of rsquare
 ```{r}
-boot_data = 
+boot_r_data = 
   weather_df |> 
   modelr::bootstrap(n = 5000) |>
   mutate(
     models = map(strap, \(df) lm(tmax ~ tmin + prcp, data = df)),
-    results = map(models, broom::tidy),
     glance = map(models, broom::glance))|>
   select(-strap,-models)|>
-  unnest(glance,results)
-boot_data
+  unnest(glance)
+boot_r_data
 ```
 
 #Plot the distribution of rsquare
 ```{r}
 r_plot =
-  boot_data|>
+  boot_r_data|>
   ggplot(aes(x = r.squared)) +
   geom_density()
 r_plot
 ```
-The plot is a slightly left-skewed of R-squared, and the peak of the density is around 0.92.
+The plot is a left-skewed of R-squared, and the peak of the density is around 0.92.
 
 #construct 95% confidence interval of rsquare.
 ```{r}
 r_squared_ci = 
-  boot_data %>%
-  select(r.squared) %>%
+  boot_r_data |>
+  select(r.squared) |>
   summarize(
     ci_lower = quantile(r.squared, 0.025),
     ci_upper = quantile(r.squared, 0.975)
@@ -171,4 +170,45 @@ r_squared_ci
 A 95% confidence interval for the rsquared is between 0.889 and 0.941. 
 
 #Use 5000 bootstrap samples and, for each bootstrap sample, produce estimates of log(beta1*beta2).
+```{r}
+boot_log_data = 
+  weather_df |> 
+  modelr::bootstrap(n = 5000) |>
+  mutate(
+    models = map(strap, \(df) lm(tmax ~ tmin + prcp, data = df)),
+    results = map(models, broom::tidy))|>
+  select(-strap,-models)|>
+  unnest(results) |>
+  select(.id, term, estimate) |> 
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate) |> 
+  rename(beta1 = tmin, beta2 = prcp) |>
+  mutate(log_b1_b2 = log(beta1 * beta2))
+boot_log_data
+```
+```{r}
+log_beta_plot =
+  boot_log_data|>
+  filter(log_b1_b2 != "NaN") |>
+  select(log_b1_b2)|>
+  ggplot(aes(x = log_b1_b2)) +
+  geom_density()
+log_beta_plot
+```
+The plot is a left-skewed of R-squared, and the peak of the density is around -5.5.
+
+#construct 95% confidence interval of log(beta1*beta2).
+```{r}
+log_beta_ci =
+  boot_log_data|>
+  select(log_b1_b2)|>
+  summarize(
+    ci_lower = quantile(log_b1_b2, 0.025,na.rm = TRUE),
+    ci_upper = quantile(log_b1_b2, 0.975,na.rm = TRUE)
+  )
+log_beta_ci
+```
+A 95% confidence interval for the log(beta1 * beta2) is between -8.896 and -4.590.
+
 
